@@ -42,16 +42,16 @@ RUN ls -la /
 RUN ls -la /home/$BUSER
 
 # get patch
-RUN cd /home/$BUSER/mutter-3.28.* && patch -p2 < /mutter.abcdesktop.patch
+RUN cd /home/$BUSER/mutter-3* && patch -p2 < /mutter.abcdesktop.patch
 
 # dch --local abcdesktop_sig_usr
-RUN cd /home/$BUSER/mutter-3.28.* && dch -n abcdesktop_sig_usr
+RUN cd /home/$BUSER/mutter-3* && dch -n abcdesktop_sig_usr
 
 # dpkg-source --commit
-RUN cd /home/$BUSER/mutter-3.28.* && \
+RUN cd /home/$BUSER/mutter-3* && \
     EDITOR=/bin/true dpkg-source -q --commit . abcdesktop_sig_usr 
     
-RUN cd /home/$BUSER/mutter-3.28.* && \    
+RUN cd /home/$BUSER/mutter-3* && \    
     debuild -us -uc
     
 RUN ls -la /home/$BUSER/*.deb
