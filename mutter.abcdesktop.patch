@@ -1,0 +1,109 @@
+diff -Naur mutter.o/mutter-3.28.4+git20200505/src/core/window.c mutter.a/mutter-3.28.4+git20200505/src/core/window.c
+--- mutter.o/mutter-3.28.4+git20200505/src/core/window.c	2020-05-05 21:16:46.000000000 +0200
++++ mutter.a/mutter-3.28.4+git20200505/src/core/window.c	2022-03-14 22:42:34.762434861 +0100
+@@ -200,6 +200,87 @@
+ 
+ static guint window_signals[LAST_SIGNAL] = { 0 };
+ 
++// abcdesktop defines
++#define SIG_MANAGED_WINDOW   SIGUSR1
++#define SIG_UNMANAGED_WINDOW SIGUSR2
++#define SIG_PID_FILENAME     "/var/run/desktop/spawner.pid"
++char *config_notify_filename_pid=SIG_PID_FILENAME;
++
++int getinfo_pid(const char* filename)
++{
++  if (!filename)
++  {
++	meta_topic (   META_DEBUG_ERRORS,
++                       "Can not open filename null to get pid, notify failed" );
++    	return 0;
++  }
++
++  FILE* fptr = fopen(filename, "r");
++  if (fptr != NULL)
++  {
++    char buf[ 16 ];
++    memset( buf, 0, 16);
++    int nr = fread(buf, 1, 16, fptr);
++    fclose(fptr);
++    if (nr > 0)
++    {
++        int pid = atoi( buf );
++        return pid;
++    }
++    else
++	meta_topic (   META_DEBUG_ERRORS,
++                       "Can not read file %s, notify failed", 
++		       filename );
++  }
++  else
++	meta_topic (   META_DEBUG_ERRORS,
++	  	       "Can not open file %s to get pid, notify failed", 
++		       filename );
++  return 0;
++}
++
++
++
++int s_kill(int sig)
++{
++  static int current_pid = 0;
++  int n=-1;
++
++  if (current_pid > 0)
++  {
++        /* try to send signal */
++        n=kill( current_pid, sig );
++        if (n)
++        {
++                /* Some thing wrong pid has changed ?*/
++                current_pid = getinfo_pid( config_notify_filename_pid );
++                if (current_pid > 0)
++                        n=kill( current_pid, sig );
++        }
++  }
++  else
++  {
++        current_pid = getinfo_pid(config_notify_filename_pid);
++        if (current_pid > 0)
++                n = kill( current_pid, sig );
++  }
++  return n;
++}
++
++
++void send_signal_notify( int sig )
++{
++  if ( !config_notify_filename_pid)
++        return;
++  int n = s_kill( sig );
++  if (n)
++	 meta_topic ( 	META_DEBUG_ERRORS,
++			"Notify has failed to send signal %d", 
++			sig );
++}
++
++
++
+ static void
+ prefs_changed_callback (MetaPreference pref,
+                         gpointer       data)
+@@ -313,6 +394,8 @@
+   g_free (window->placement_rule);
+ 
+   G_OBJECT_CLASS (meta_window_parent_class)->finalize (object);
++  // send abcdesktop signal
++  send_signal_notify( SIG_UNMANAGED_WINDOW );
+ }
+ 
+ static void
+@@ -664,6 +747,8 @@
+ {
+   self->stamp = next_window_stamp++;
+   meta_prefs_add_listener (prefs_changed_callback, self);
++  // send abcdesktop signal
++  send_signal_notify( SIG_MANAGED_WINDOW );
+ }
+ 
+ static gboolean
