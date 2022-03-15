@@ -31,13 +31,14 @@ jobs:
         run: |
           docker buildx ls
       
+      # --platform linux/amd64,linux/arm/v7,linux/arm64 \
       - name: Run docker buildx mutter.${{ matrix.BASE_IMAGE_RELEASE }}
         run: |
           docker buildx build \
             --build-arg BASE_IMAGE_RELEASE=${{ matrix.BASE_IMAGE_RELEASE }} \
             --build-arg BASE_IMAGE=ubuntu:${{ matrix.BASE_IMAGE_RELEASE }} \
             --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
-            --platform linux/amd64,linux/arm/v7,linux/arm64 \
+            --platform linux/amd64 \
             --output "type=image,push=true" \
             --tag abcdesktopio/mutter:${{ matrix.BASE_IMAGE_RELEASE }} \
             --file ./Dockerfile .
